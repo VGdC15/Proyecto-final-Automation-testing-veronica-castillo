@@ -3,6 +3,7 @@ from selenium.webdriver.chrome.options import Options
 
 
 def crear_driver():
+    """Crea y configura una instancia del navegador Chrome."""
     options = Options()
     options.add_argument("--start-maximized")
 
