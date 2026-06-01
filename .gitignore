@@ -17,15 +17,6 @@ geckodriver
 msedgedriver.exe
 msedgedriver
 
-# Reports
-reports/
-report.html
-*.html
-
-# Screenshots
-screenshots/
-*.png
-
 # Logs
 *.log
 
