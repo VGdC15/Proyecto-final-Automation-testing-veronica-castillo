@@ -1,23 +1,23 @@
-from utils.driver_factory import crear_driver
-from utils.saucedemo_helpers import (
-    login_exitoso,
-    validar_url_inventario,
-    validar_titulo_inventario,
-    validar_productos_visibles,
-    validar_elementos_interfaz,
-)
+import pytest
+
+from pages.login_page import LoginPage
+from pages.inventory_page import InventoryPage
 
 
-def test_catalogo_visible_despues_del_login():
-    """Valida que el catálogo de productos se muestre correctamente después del login."""
-    driver = crear_driver()
+@pytest.mark.catalogo
+def test_catalogo_visible_despues_del_login(driver, credenciales_validas):
+    """Valida que el catálogo se muestre correctamente usando Page Object Model."""
+    login_page = LoginPage(driver)
 
-    try:
-        login_exitoso(driver)
-        validar_url_inventario(driver)
-        validar_titulo_inventario(driver)
-        validar_productos_visibles(driver)
-        validar_elementos_interfaz(driver)
+    login_page.abrir().realizar_login(
+        credenciales_validas["usuario"],
+        credenciales_validas["password"],
+    )
 
-    finally:
-        driver.quit()
+    inventory_page = InventoryPage(driver)
+
+    assert inventory_page.esta_en_pagina_inventario()
+    assert inventory_page.obtener_titulo() == "Products"
+    assert inventory_page.hay_productos_visibles()
+    assert inventory_page.menu_visible()
+    assert inventory_page.filtro_visible()

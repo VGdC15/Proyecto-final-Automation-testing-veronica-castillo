@@ -1,14 +1,21 @@
-from utils.driver_factory import crear_driver
-from utils.saucedemo_helpers import login_exitoso, validar_url_inventario
+import pytest
+
+from pages.login_page import LoginPage
+from pages.inventory_page import InventoryPage
 
 
-def test_login_exitoso_saucedemo():
-    """Valida que un usuario pueda iniciar sesión correctamente en Sauce Demo."""
-    driver = crear_driver()
+@pytest.mark.smoke
+@pytest.mark.login
+def test_login_exitoso_saucedemo(driver, credenciales_validas):
+    """Valida login exitoso usando Page Object Model."""
+    login_page = LoginPage(driver)
 
-    try:
-        login_exitoso(driver)
-        validar_url_inventario(driver)
+    login_page.abrir().realizar_login(
+        credenciales_validas["usuario"],
+        credenciales_validas["password"],
+    )
 
-    finally:
-        driver.quit()
+    inventory_page = InventoryPage(driver)
+
+    assert inventory_page.esta_en_pagina_inventario()
+    assert inventory_page.obtener_titulo() == "Products"

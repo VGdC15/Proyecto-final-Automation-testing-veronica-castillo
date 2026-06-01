@@ -1,33 +1,32 @@
-from utils.driver_factory import crear_driver
-from utils.saucedemo_helpers import (
-    login_exitoso,
-    validar_url_inventario,
-    validar_productos_visibles,
-    obtener_nombre_producto,
-    agregar_producto_al_carrito,
-    validar_badge_carrito,
-    abrir_carrito,
-    validar_producto_en_carrito,
-)
+import pytest
+
+from pages.login_page import LoginPage
+from pages.inventory_page import InventoryPage
 
 
-def test_agregar_producto_al_carrito():
-    """Valida que se pueda agregar un producto al carrito y que figure correctamente."""
-    driver = crear_driver()
+@pytest.mark.smoke
+@pytest.mark.carrito
+def test_agregar_producto_al_carrito(driver, credenciales_validas):
+    """Valida agregar un producto al carrito usando Page Object Model."""
+    login_page = LoginPage(driver)
 
-    try:
-        login_exitoso(driver)
-        validar_url_inventario(driver)
+    login_page.abrir().realizar_login(
+        credenciales_validas["usuario"],
+        credenciales_validas["password"],
+    )
 
-        productos = validar_productos_visibles(driver)
-        primer_producto = productos[0]
-        nombre_producto = obtener_nombre_producto(primer_producto)
+    inventory_page = InventoryPage(driver)
 
-        agregar_producto_al_carrito(primer_producto)
-        validar_badge_carrito(driver, "1")
+    assert inventory_page.esta_en_pagina_inventario()
 
-        abrir_carrito(driver)
-        validar_producto_en_carrito(driver, nombre_producto)
+    nombre_producto = inventory_page.obtener_nombre_primer_producto()
 
-    finally:
-        driver.quit()
+    inventory_page.agregar_primer_producto()
+
+    assert inventory_page.obtener_contador_carrito() == "1"
+
+    cart_page = inventory_page.ir_al_carrito()
+
+    assert cart_page.esta_en_pagina_carrito()
+    assert cart_page.obtener_cantidad_productos() == 1
+    assert cart_page.contiene_producto(nombre_producto)
