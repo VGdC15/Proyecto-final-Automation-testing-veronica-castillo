@@ -35,3 +35,8 @@ Desktop.ini
 
 # Mac
 .DS_Store
+
+reports/*.html
+screenshots/*.png
+logs/*.log
+logs/*.log.*

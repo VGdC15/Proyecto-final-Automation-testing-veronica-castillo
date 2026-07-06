@@ -9,15 +9,28 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 
 from utils.data_reader import obtener_datos_prueba
+from utils.logger_config import configurar_logger, obtener_logger
 
 
 ROOT_DIR = Path(__file__).resolve().parent
 SCREENSHOTS_DIR = ROOT_DIR / "screenshots"
 
+logger = configurar_logger()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def registrar_ejecucion_suite():
+    """Registra el inicio y fin de la ejecución completa."""
+    logger.info("Inicio de ejecución de la suite de automatización")
+    yield
+    logger.info("Fin de ejecución de la suite de automatización")
+
 
 @pytest.fixture(scope="function")
 def driver():
     """Crea y cierra una instancia de Chrome WebDriver para cada test."""
+    logger.info("Creando instancia de Chrome WebDriver")
+
     chrome_options = Options()
     chrome_options.add_argument("--start-maximized")
     chrome_options.add_argument("--no-sandbox")
@@ -29,14 +42,16 @@ def driver():
     yield navegador
 
     try:
+        logger.info("Cerrando instancia de Chrome WebDriver")
         navegador.quit()
-    except WebDriverException:
-        pass
+    except WebDriverException as error:
+        logger.warning("No se pudo cerrar el navegador correctamente: %s", error)
 
 
 @pytest.fixture(scope="session")
 def datos_prueba():
     """Carga los datos externos de prueba una sola vez por sesión."""
+    logger.info("Cargando datos de prueba desde archivo JSON")
     return obtener_datos_prueba()
 
 
@@ -64,6 +79,12 @@ def datos_checkout(datos_prueba):
     return datos_prueba["checkout"]
 
 
+@pytest.fixture
+def test_logger():
+    """Permite usar el logger en tests o Page Objects si se necesita."""
+    return obtener_logger("automation.tests")
+
+
 def _normalizar_nombre_test(nombre_test):
     """Limpia el nombre del test para usarlo como nombre de archivo."""
     return re.sub(r"[^a-zA-Z0-9_-]", "_", nombre_test)
@@ -79,31 +100,55 @@ def guardar_screenshot(driver, nombre_test):
 
     try:
         driver.save_screenshot(str(ruta_screenshot))
+        logger.info("Screenshot guardado en: %s", ruta_screenshot)
         return ruta_screenshot
-    except WebDriverException:
+    except WebDriverException as error:
+        logger.warning("No se pudo capturar screenshot: %s", error)
         return None
+
+
+def pytest_runtest_logstart(nodeid, location):
+    """Registra el inicio de cada test."""
+    logger.info("Iniciando test: %s", nodeid)
 
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     """
-    Hook de Pytest que guarda screenshot si un test falla.
+    Hook de Pytest que registra resultados y guarda screenshot si un test falla.
     Está protegido para no romper Pytest si la sesión del navegador ya no existe.
     """
     resultado = yield
     reporte = resultado.get_result()
 
-    if reporte.when == "call" and reporte.failed:
+    if reporte.when != "call":
+        return
+
+    if reporte.passed:
+        logger.info("Test PASSED: %s", item.nodeid)
+        return
+
+    if reporte.skipped:
+        logger.warning("Test SKIPPED: %s", item.nodeid)
+        return
+
+    if reporte.failed:
+        logger.error("Test FAILED: %s", item.nodeid)
+
         driver = item.funcargs.get("driver")
 
         if not driver:
+            logger.warning("No hay driver disponible para capturar screenshot")
             return
 
         ruta_screenshot = guardar_screenshot(driver, item.name)
 
         if not ruta_screenshot:
             reporte.sections.append(
-                ("screenshot", "No se pudo capturar screenshot: sesión del navegador inválida.")
+                (
+                    "screenshot",
+                    "No se pudo capturar screenshot: sesión del navegador inválida.",
+                )
             )
             return
 
@@ -118,4 +163,4 @@ def pytest_runtest_makereport(item, call):
             extras_reporte.append(extras.image(str(ruta_screenshot)))
             reporte.extras = extras_reporte
         except ImportError:
-            pass
+            logger.warning("pytest-html no está disponible para adjuntar screenshot")
