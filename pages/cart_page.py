@@ -84,4 +84,6 @@ class CartPage:
         self.wait.until(
             EC.element_to_be_clickable(self._CHECKOUT_BUTTON)
         ).click()
-        return self
+
+        from pages.checkout_page import CheckoutPage
+        return CheckoutPage(self.driver)

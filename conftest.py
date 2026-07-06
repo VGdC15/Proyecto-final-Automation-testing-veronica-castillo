@@ -42,3 +42,11 @@ def usuario_bloqueado():
         "usuario": "locked_out_user",
         "password": "secret_sauce",
     }
+
+@pytest.fixture
+def datos_checkout():
+    return {
+        "nombre": "Veronica",
+        "apellido": "Castillo",
+        "codigo_postal": "1824",
+    }
