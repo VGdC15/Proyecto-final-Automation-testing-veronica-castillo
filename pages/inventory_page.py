@@ -19,8 +19,15 @@ class InventoryPage:
         self.driver = driver
         self.wait = WebDriverWait(driver, 10)
 
+    def esperar_carga(self):
+        """Espera a que la página de inventario cargue correctamente."""
+        self.wait.until(EC.url_contains("/inventory.html"))
+        self.wait.until(EC.visibility_of_element_located(self._TITLE))
+        self.wait.until(EC.visibility_of_all_elements_located(self._PRODUCTS))
+        return self
+
     def esta_en_pagina_inventario(self):
-        """Valida que la URL actual corresponda al inventario."""
+        """Indica si la URL actual corresponde al inventario."""
         return "/inventory.html" in self.driver.current_url
 
     def obtener_titulo(self):
@@ -45,9 +52,10 @@ class InventoryPage:
 
     def obtener_nombre_primer_producto(self):
         """Obtiene el nombre del primer producto visible."""
-        return self.wait.until(
+        nombres = self.wait.until(
             EC.visibility_of_all_elements_located(self._PRODUCT_NAMES)
-        )[0].text
+        )
+        return nombres[0].text
 
     def agregar_primer_producto(self):
         """Agrega el primer producto disponible al carrito."""
@@ -77,6 +85,12 @@ class InventoryPage:
         """Indica si el botón de menú está visible."""
         return self.wait.until(
             EC.visibility_of_element_located(self._MENU_BUTTON)
+        ).is_displayed()
+
+    def carrito_visible(self):
+        """Indica si el enlace del carrito está visible."""
+        return self.wait.until(
+            EC.visibility_of_element_located(self._CART_LINK)
         ).is_displayed()
 
     def filtro_visible(self):
