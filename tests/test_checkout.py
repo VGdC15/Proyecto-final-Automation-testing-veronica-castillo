@@ -44,7 +44,9 @@ def test_checkout_completo(driver, credenciales_validas, datos_checkout):
 
     checkout_page.continuar()
 
-    assert not checkout_page.hay_error_visible()
+    if checkout_page.hay_error_visible():
+        mensaje_error = checkout_page.obtener_mensaje_error()
+        raise AssertionError(f"Error visible en checkout: {mensaje_error}")
 
     checkout_page.esperar_carga_resumen()
 

@@ -36,6 +36,7 @@ class CheckoutPage:
         self.wait.until(EC.element_to_be_clickable(self._FIRST_NAME_INPUT))
         self.wait.until(EC.element_to_be_clickable(self._LAST_NAME_INPUT))
         self.wait.until(EC.element_to_be_clickable(self._POSTAL_CODE_INPUT))
+        self.wait.until(EC.element_to_be_clickable(self._CONTINUE_BUTTON))
         return self
 
     def esperar_carga_resumen(self):
@@ -69,76 +70,75 @@ class CheckoutPage:
             EC.visibility_of_element_located(self._TITLE)
         ).text
 
-    def _obtener_campo(self, locator):
-        """Obtiene un campo clickeable del formulario."""
-        campo = self.wait.until(
+    def _obtener_input(self, locator):
+        """Obtiene un input interactuable."""
+        input_element = self.wait.until(
             EC.element_to_be_clickable(locator)
         )
 
         self.driver.execute_script(
             "arguments[0].scrollIntoView({block: 'center'});",
-            campo,
+            input_element,
         )
 
-        return campo
+        return input_element
 
-    def _setear_valor_con_js(self, campo, valor):
+    def _setear_valor_input(self, locator, valor):
         """
-        Setea el valor del input usando el setter nativo y dispara eventos.
-        Esto ayuda cuando send_keys no actualiza correctamente un input manejado por JS.
+        Escribe el valor en un input de forma estable.
+        Primero intenta como usuario real y luego refuerza con JavaScript,
+        disparando eventos para que React/SauceDemo registre el cambio.
         """
-        self.driver.execute_script(
-            """
-            const input = arguments[0];
-            const value = arguments[1];
-
-            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-                window.HTMLInputElement.prototype,
-                'value'
-            ).set;
-
-            nativeInputValueSetter.call(input, value);
-
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-            """,
-            campo,
-            valor,
-        )
-
-    def _escribir_en_campo(self, locator, valor):
-        """Escribe un valor en un input de forma robusta."""
         valor = str(valor)
+        input_element = self._obtener_input(locator)
 
-        campo = self._obtener_campo(locator)
+        input_element.click()
+        input_element.send_keys(Keys.CONTROL, "a")
+        input_element.send_keys(Keys.BACKSPACE)
+        input_element.send_keys(valor)
 
-        campo.click()
-        campo.send_keys(Keys.CONTROL, "a")
-        campo.send_keys(Keys.BACKSPACE)
-        campo.send_keys(valor)
-
-        valor_actual = campo.get_attribute("value")
+        valor_actual = input_element.get_attribute("value")
 
         if valor_actual != valor:
-            self._setear_valor_con_js(campo, valor)
+            input_element = self.driver.find_element(*locator)
+
+            self.driver.execute_script(
+                """
+                const input = arguments[0];
+                const value = arguments[1];
+
+                const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                    window.HTMLInputElement.prototype,
+                    'value'
+                ).set;
+
+                nativeInputValueSetter.call(input, value);
+
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                input.dispatchEvent(new Event('blur', { bubbles: true }));
+                """,
+                input_element,
+                valor,
+            )
 
         self.wait.until(
-            lambda _: self._obtener_campo(locator).get_attribute("value") == valor
+            lambda _: self.driver.find_element(*locator).get_attribute("value") == valor
         )
 
         return self
 
     def ingresar_nombre(self, nombre):
         """Completa el campo nombre."""
-        return self._escribir_en_campo(self._FIRST_NAME_INPUT, nombre)
+        return self._setear_valor_input(self._FIRST_NAME_INPUT, nombre)
 
     def ingresar_apellido(self, apellido):
         """Completa el campo apellido."""
-        return self._escribir_en_campo(self._LAST_NAME_INPUT, apellido)
+        return self._setear_valor_input(self._LAST_NAME_INPUT, apellido)
 
     def ingresar_codigo_postal(self, codigo_postal):
         """Completa el campo código postal."""
-        return self._escribir_en_campo(self._POSTAL_CODE_INPUT, codigo_postal)
+        return self._setear_valor_input(self._POSTAL_CODE_INPUT, codigo_postal)
 
     def completar_datos_cliente(self, nombre, apellido, codigo_postal):
         """Completa todos los datos requeridos para continuar el checkout."""
@@ -149,33 +149,40 @@ class CheckoutPage:
 
     def obtener_nombre_ingresado(self):
         """Devuelve el valor cargado en el campo nombre."""
-        return self.wait.until(
-            EC.visibility_of_element_located(self._FIRST_NAME_INPUT)
-        ).get_attribute("value")
+        return self.driver.find_element(*self._FIRST_NAME_INPUT).get_attribute("value")
 
     def obtener_apellido_ingresado(self):
         """Devuelve el valor cargado en el campo apellido."""
-        return self.wait.until(
-            EC.visibility_of_element_located(self._LAST_NAME_INPUT)
-        ).get_attribute("value")
+        return self.driver.find_element(*self._LAST_NAME_INPUT).get_attribute("value")
 
     def obtener_codigo_postal_ingresado(self):
         """Devuelve el valor cargado en el campo código postal."""
-        return self.wait.until(
-            EC.visibility_of_element_located(self._POSTAL_CODE_INPUT)
-        ).get_attribute("value")
+        return self.driver.find_element(*self._POSTAL_CODE_INPUT).get_attribute("value")
 
     def continuar(self):
         """Avanza al resumen del checkout."""
-        self.wait.until(
+        boton = self.wait.until(
             EC.element_to_be_clickable(self._CONTINUE_BUTTON)
-        ).click()
+        )
+
+        self.driver.execute_script(
+            "arguments[0].scrollIntoView({block: 'center'});",
+            boton,
+        )
+
+        try:
+            boton.click()
+        except Exception:
+            self.driver.execute_script("arguments[0].click();", boton)
+
         return self
 
     def hay_error_visible(self):
-        """Indica si hay un mensaje de error visible en el checkout."""
+        """Indica si hay un mensaje de error visible en checkout."""
+        wait_corto = WebDriverWait(self.driver, 2)
+
         try:
-            return self.wait.until(
+            return wait_corto.until(
                 EC.visibility_of_element_located(self._ERROR_MESSAGE)
             ).is_displayed()
         except TimeoutException:
@@ -189,9 +196,16 @@ class CheckoutPage:
 
     def finalizar_compra(self):
         """Finaliza la compra."""
-        self.wait.until(
+        boton = self.wait.until(
             EC.element_to_be_clickable(self._FINISH_BUTTON)
-        ).click()
+        )
+
+        self.driver.execute_script(
+            "arguments[0].scrollIntoView({block: 'center'});",
+            boton,
+        )
+
+        boton.click()
         return self
 
     def obtener_cantidad_items_resumen(self):
