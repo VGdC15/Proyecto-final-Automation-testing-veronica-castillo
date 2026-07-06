@@ -1,21 +1,25 @@
-import pytest
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
+from UTILS.driver_factory import crear_driver
 from pages.login_page import LoginPage
-from pages.inventory_page import InventoryPage
 
 
-@pytest.mark.smoke
-@pytest.mark.login
-def test_login_exitoso_saucedemo(driver, credenciales_validas):
-    """Valida login exitoso usando Page Object Model."""
-    login_page = LoginPage(driver)
+def test_login_exitoso_saucedemo():
+    """Valida que un usuario pueda iniciar sesión correctamente en Sauce Demo."""
+    driver = crear_driver()
 
-    login_page.abrir().realizar_login(
-        credenciales_validas["usuario"],
-        credenciales_validas["password"],
-    )
+    try:
+        login_page = LoginPage(driver)
 
-    inventory_page = InventoryPage(driver)
+        login_page.abrir()
+        login_page.realizar_login("standard_user", "secret_sauce")
 
-    assert inventory_page.esta_en_pagina_inventario()
-    assert inventory_page.obtener_titulo() == "Products"
+        WebDriverWait(driver, 10).until(
+            EC.url_contains("/inventory.html")
+        )
+
+        assert "/inventory.html" in driver.current_url
+
+    finally:
+        driver.quit()

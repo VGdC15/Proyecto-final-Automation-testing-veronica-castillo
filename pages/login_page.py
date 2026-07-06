@@ -1,3 +1,4 @@
+from selenium.common import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -66,5 +67,5 @@ class LoginPage:
             return self.wait.until(
                 EC.visibility_of_element_located(self._ERROR_MESSAGE)
             ).is_displayed()
-        except Exception:
+        except TimeoutException:
             return False
