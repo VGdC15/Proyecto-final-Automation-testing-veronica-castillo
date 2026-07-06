@@ -4,10 +4,9 @@ from pages.login_page import LoginPage
 from pages.inventory_page import InventoryPage
 
 
-@pytest.mark.smoke
 @pytest.mark.carrito
 def test_agregar_producto_al_carrito(driver, credenciales_validas):
-    """Valida agregar un producto al carrito usando Page Object Model."""
+    """Valida que un producto pueda agregarse correctamente al carrito."""
     login_page = LoginPage(driver)
 
     login_page.abrir().realizar_login(
@@ -15,9 +14,7 @@ def test_agregar_producto_al_carrito(driver, credenciales_validas):
         credenciales_validas["password"],
     )
 
-    inventory_page = InventoryPage(driver)
-
-    assert inventory_page.esta_en_pagina_inventario()
+    inventory_page = InventoryPage(driver).esperar_carga()
 
     nombre_producto = inventory_page.obtener_nombre_primer_producto()
 
@@ -25,8 +22,11 @@ def test_agregar_producto_al_carrito(driver, credenciales_validas):
 
     assert inventory_page.obtener_contador_carrito() == "1"
 
-    cart_page = inventory_page.ir_al_carrito()
+    cart_page = inventory_page.ir_al_carrito().esperar_carga()
 
     assert cart_page.esta_en_pagina_carrito()
-    assert cart_page.obtener_cantidad_productos() == 1
-    assert cart_page.contiene_producto(nombre_producto)
+    assert cart_page.obtener_titulo() == "Your Cart"
+    assert cart_page.hay_items_en_carrito()
+    assert cart_page.obtener_cantidad_items() == 1
+    assert cart_page.obtener_nombre_primer_item() == nombre_producto
+    assert cart_page.obtener_cantidad_primer_item() == "1"
