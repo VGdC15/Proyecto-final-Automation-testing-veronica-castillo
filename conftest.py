@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+import os
 import re
 
 import pytest
@@ -35,6 +36,10 @@ def driver():
     chrome_options.add_argument("--start-maximized")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--window-size=1920,1080")
+
+    if os.getenv("CI") == "true":
+        chrome_options.add_argument("--headless=new")
 
     service = Service()
     navegador = webdriver.Chrome(service=service, options=chrome_options)
